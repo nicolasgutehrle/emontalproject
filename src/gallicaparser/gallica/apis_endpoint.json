@@ -1,0 +1,16 @@
+{
+  "issues" : "https://gallica.bnf.fr/services/Issues?ark=ark:/{ark}",
+  "issuesdate" : "https://gallica.bnf.fr/services/Issues?ark=ark:/{ark}&date={date}",
+  "oairecords" : "https://gallica.bnf.fr/services/OAIRecord?ark=ark:/{ark}",
+  "pagination" : "https://gallica.bnf.fr/services/Pagination?ark={ark}",
+  "simpleimage" : "https://gallica.bnf.fr/ark:/{ark}/{res}",
+  "contentsearch" : "https://gallica.bnf.fr/services/ContentSearch?ark={ark}&query={query}",
+  "contentpage" : "https://gallica.bnf.fr/services/ContentSearch?ark={ark}&query={query}&page={page}",
+  "toc" : "https://gallica.bnf.fr/services/Toc?ark={ark}",
+  "texteBrut" : "https://gallica.bnf.fr/ark:/{ark}.texteBrut",
+  "ocr" : "https://gallica.bnf.fr/RequestDigitalElement?O={ark}&E=ALTO&Deb={page}",
+  "iiif" : "https://gallica.bnf.fr/iiif/ark:/{ark}/{region}/{size}/{rotation}/{quality}.{format}",
+  "iiifmetadata" : "https://gallica.bnf.fr/iiif/ark:/{ark}/info.json",
+  "search" : "https://gallica.bnf.fr/SRU?operation=searchRetrieve&version=1.2&query=(gallica all '{query})&startRecord=1"
+
+}
