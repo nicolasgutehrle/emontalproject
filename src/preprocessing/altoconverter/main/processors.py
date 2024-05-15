@@ -4,7 +4,7 @@ import numpy as np
 from bs4 import BeautifulSoup, Tag
 import re
 from textcleaner.main.ocrtextprocessor import OCRTextProcessor
-from .postprocessors import Postprocessor
+# from .postprocessors import Postprocessor
 from .line_rules import classify_lines
 from .block_rules import classify_block
 from rapidfuzz import fuzz, process
@@ -12,7 +12,7 @@ from segmenter.segmenter.segmenter import Segmenter
 import warnings
 warnings.filterwarnings('ignore')
 
-import unidecode
+# import unidecode
 
 # from langdetect import DetectorFactory, detect_langs
 # DetectorFactory.seed = 0
@@ -56,14 +56,25 @@ class Processor:
 
     def round_value(self, x: int, base: int = 5) -> int:
         """
-        Round value x by base
-        For instance, if x = 62 and base is 5, then x becomes 60
+        Round value x by base. For instance, if x = 62 and base is 5, then x becomes 60
+
+        :param x: Value to round
+        :type x: int
+        :param base: _description_, defaults to 5
+        :type base: int, Integer base to round the vlaue
+        :return: Rounded value
+        :rtype: int
         """
         return base * round(x/base)
     
     def capitalletters_proportion(self, text: str) -> int :
         """
         Return proportion of capital letter in text
+
+        :param text: Text to process
+        :type text: str
+        :return: Proportion of capital letters in text
+        :rtype: int
         """
         try:
             capitals = re.findall(r'[A-Z]', text)
@@ -76,6 +87,11 @@ class Processor:
     def digits_proportion(self, text: str) -> int :
         """
         Return proportion of digits letter in text
+
+        :param text: Text to process
+        :type text: str
+        :return: Proportion of digits in text
+        :rtype: int
         """
         try:
             capitals = re.findall(r'\d', text)
@@ -88,6 +104,11 @@ class Processor:
     def nonalpha_proportion(self, text: str) -> int:
         """
         Return proportion of non-alphanumeric characters in text
+
+        :param text: Text to process
+        :type text: str
+        :return: Proportion of non alpha numeric characters in text
+        :rtype: int
         """
         try:
             non_alpha = re.findall(r'[^a-zA-Z\d\s:]', text)
@@ -99,12 +120,15 @@ class Processor:
 
     def get_morphological_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Extracts morphological data about each line
-        these morphological data are:
-        does the line starts with a capital letter, with a digit,
-        ends with a punctuation. Also finds the proportion of capital letters and
-        non-alphanumeric character in the line
+        Extracts morphological data about each line these morphological data are: 
+        * does the line starts with a capital letter, with a digit
+        * ends with a punctuation. Also finds the proportion of capital letters
+        * non-alphanumeric character in the line
 
+        :param df: Line feature dataframe
+        :type df: pd.DataFrame
+        :return: Update feature dataframe
+        :rtype: pd.DataFrame
         """
 
         # non alphanumeric characters, can be preceded and / or followed by one
@@ -168,6 +192,11 @@ class Processor:
     def postprocess_metadata(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Postprocess page_metadata file by identifying block types
+
+        :param df: Line feature dataframe
+        :type df: pd.DataFrame
+        :return: Line feature dataframe and block feature dataframe
+        :rtype: pd.DataFrame
         """
 
         # extracts block metadata
@@ -183,11 +212,16 @@ class Processor:
             df.loc[df['block_id'] == block_id, 'block_post_rule'] = block_post_rule
         return df, df_block
 
-    def extract_line_data(self, file) -> pd.DataFrame:
+    def extract_line_data(self, filepath:str) -> pd.DataFrame:
         """
+        Reads XML file and extracts features related to each textline in the XML ALTO doc
 
+        :param filepath: Path to file
+        :type filepath: str
+        :return: Line feature dataframe
+        :rtype: pd.DataFrame
         """
-        with open(file, encoding='utf-8') as f:
+        with open(filepath, encoding='utf-8') as f:
             soup = BeautifulSoup(f, 'lxml-xml')
 
         list_pages = soup.ocr.find_all('page', recursive=False)
@@ -199,8 +233,8 @@ class Processor:
 
             alto = ocr_page.alto
             layout = alto.layout
-            description = alto.description
-            styles = alto.styles
+            # description = alto.description
+            # styles = alto.styles
 
             alto_page = layout.printspace
             if alto_page:
@@ -226,7 +260,12 @@ class Processor:
 
     def get_page_metadata(self, alto_page: BeautifulSoup) -> pd.DataFrame:
         """
+        Extract features from XML ALTO document
 
+        :param alto_page: XML ALTO document 
+        :type alto_page: BeautifulSoup
+        :return: Line feature dataframe
+        :rtype: pd.DataFrame
         """
         doctitle = alto_page.find('title').contents[0]
         # calculates linespace between each line for the whole document
@@ -282,8 +321,14 @@ class Processor:
 
     def get_interline_space(self, list_lines_1: List[int], list_lines_2: List[int]) -> dict:
         """
-        Calculates space between each line by substracting VPOS values
-        then calculates linespace mean
+        Calculates space between each line by substracting VPOS values, then calculates linespace mean
+
+        :param list_lines_1: First list of lines
+        :type list_lines_1: List[int]
+        :param list_lines_2: Second list of lines. 
+        :type list_lines_2: List[int]
+        :return: Dictionary of features for each pair of lines
+        :rtype: dict
         """
         list_following_space = []
         # finding space between line and next one
@@ -316,10 +361,12 @@ class Processor:
 
     def get_block_type(self, textblock: Tag) -> str:
         """
-        Retrieves value of type attribute from given textblock.
-        Is only concerned with 'table', 'advertisement', 'titre1' types
-        If it has no type attribute or type is not in the list above,
-        then its type is set to 'text'
+        Retrieves value of type attribute from given textblock. Is only concerned with 'table', 'advertisement', 'titre1' types. If it has no type attribute or type is not in the list above, then its type is set to 'text'
+
+        :param textblock: TextBlock tag to process
+        :type textblock: Tag
+        :return: Type of the Textblock tag. If it does not have this attribute, returns 'No_type'
+        :rtype: str
         """
         
         if textblock.has_attr('type'):
@@ -344,8 +391,12 @@ class Processor:
 
     def get_block_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Gathers metadata about each textblock in the document and metadata about
-        the document they are in
+        Gathers metadata about each textblock in the document and metadata about the document they are in
+
+        :param data: Line feature dataframe
+        :type data: pd.DataFrame
+        :return: Block feature dataframe
+        :rtype: pd.DataFrame
         """
 
         # data about each block have already been collected before while
@@ -416,9 +467,12 @@ class Processor:
 
     def get_geometric_data(self, textblock: Tag) -> dict:
         """
-        Retrieves metadata about textline tag and metadata about the textblock they are in
-        Mainly extracts data that is in the textline attributes, but also calculates other data
-        from data (number of word, mean and median in the whole block, ...)
+        Retrieves metadata about textline tag and metadata about the textblock they are in. Mainly extracts data that is in the textline attributes, but also calculates other data from data (number of word, mean and median in the whole block, ...)
+
+        :param textblock: TextBlock tag to process
+        :type textblock: Tag
+        :return: Dictionary of features for this block
+        :rtype: dict
         """
         # extracts each line in the block
         list_lines = textblock.find_all('textline')
@@ -498,6 +552,11 @@ class Processor:
     def convert_line_to_text(self, list_lines: List[Tag]) -> List[str]:
         """
         Convert each textline tags in list_line into into string
+
+        :param list_lines: List of TextLine tags from XML ALTO document
+        :type list_lines: List[Tag]
+        :return: List of textual content from lines
+        :rtype: List[str]
         """
         list_txtline = []
         for line in list_lines:
@@ -525,6 +584,9 @@ class Processor:
     def tag_sentences(self, doc_book: BeautifulSoup) -> None:
         """
         Tags sentence from text of every paragraph
+
+        :param doc_book: Document in the DocBook (EMONTAL) format
+        :type doc_book: BeautifulSoup
         """
 
         list_para_tags = doc_book.find_all('para')
@@ -541,7 +603,7 @@ class Processor:
                 sent_tag = para.find_all('sent')[-1]
                 sent_tag.append(sent)
 
-    def convert_to_docbook(self, filename:str, xml: BeautifulSoup, page_metadata: pd.DataFrame) -> BeautifulSoup:
+    def convert_to_docbook(self, xml: BeautifulSoup, page_metadata: pd.DataFrame) -> BeautifulSoup:
         """
         Parse each line contained in page_metadata. Creates a XML doc.
         For each line, add tag according to line type:
@@ -552,6 +614,13 @@ class Processor:
         * add text to last para tag if line has no type
 
         Call self.tag_sentences to tag sentences in para tag after the whole document is converted to XML
+
+        :param xml: Original XML document
+        :type xml: BeautifulSoup
+        :param page_metadata: Line features dataframe
+        :type page_metadata: pd.DataFrame
+        :return: Document in the XML EMONTAL format
+        :rtype: BeautifulSoup
         """
 
         def add_line(tagname: str, last_tag_added: str, attr:dict, appendedtag: Tag) -> None:
@@ -727,7 +796,42 @@ class Processor:
             add_id(tagname)
         return doc_book
 
-    def article_segmentation(self, df_line: pd.DataFrame) -> pd.DataFrame:
+    # def article_segmentation(self, df_line: pd.DataFrame) -> pd.DataFrame:
+    #     """
+    #     Finds groups of titles and adds an article_id column where each
+    #     row is assigned an article id
+
+    #     :param df_line: TextLine Feature DataFrame
+    #     :type df_line: pd.DataFrame
+    #     :return: Updated TextLine Feature DataFrame
+    #     :rtype: pd.DataFrame
+    #     """
+
+    #     df_line['article_id'] = np.nan
+    #     # gets every line labelled as title
+    #     df_line.loc[(df_line['line_class'] == 'title')
+    #                       & (df_line['prev_title'] == 0), 'article_id'] = 'article'
+
+    #     # sets a differt article id to each title line
+    #     article_id = df_line[df_line['article_id'].notna()]['article_id']
+    #     for i, v in enumerate(article_id.index):
+    #         if i < 9:
+    #             df_line.loc[v, 'article_id'] = f"article_0{i + 1}"
+    #         else:
+    #             df_line.loc[v, 'article_id'] = f"article_{i + 1}"
+
+    #     # propagates article id to each line until reaching a different article id
+    #     df_line['article_id'].fillna(method='ffill', inplace=True)
+
+    #     # removes article_id from header row
+    #     df_line.loc[
+    #         df_line['line_class'] == 'header', 'article_id'
+    #     ] = 'header'
+
+    #     return df_line
+
+
+    def article_segmentation(self, page_metadata: pd.DataFrame) -> pd.DataFrame:
         """
         Finds groups of titles and adds an article_id column where each
         row is assigned an article id
@@ -738,63 +842,37 @@ class Processor:
         :rtype: pd.DataFrame
         """
 
-        df_line['article_id'] = np.nan
+        page_metadata['article_id'] = np.nan
         # gets every line labelled as title
-        df_line.loc[(df_line['line_class'] == 'title')
-                          & (df_line['prev_title'] == 0), 'article_id'] = 'article'
+        page_metadata.loc[(page_metadata['line_class'] == 'title')
+                          & (page_metadata['prev_title'] == 0), 'article_id'] = 'article'
 
         # sets a differt article id to each title line
-        article_id = df_line[df_line['article_id'].notna()]['article_id']
+        article_id = page_metadata[page_metadata['article_id'].notna()]['article_id']
         for i, v in enumerate(article_id.index):
             if i < 9:
-                df_line.loc[v, 'article_id'] = f"article_0{i + 1}"
+                page_metadata.loc[v, 'article_id'] = f"article_0{i + 1}"
             else:
-                df_line.loc[v, 'article_id'] = f"article_{i + 1}"
+                page_metadata.loc[v, 'article_id'] = f"article_{i + 1}"
 
         # propagates article id to each line until reaching a different article id
-        df_line['article_id'].fillna(method='ffill', inplace=True)
+        page_metadata['article_id'].fillna(method='ffill', inplace=True)
 
         # removes article_id from header row
-        df_line.loc[
-            df_line['line_class'] == 'header', 'article_id'
+        page_metadata.loc[
+            page_metadata['line_class'] == 'header', 'article_id'
         ] = 'header'
 
-        return df_line
+        return page_metadata
 
-
-    # def article_segmentation(self, page_metadata: pd.DataFrame) -> pd.DataFrame:
-    #     """
-    #     Proceeds to article segmentation by finding groups of titles
-    #     Adds an article_id column where each row is assigned an article id
-    #     """
-
-    #     page_metadata['article_id'] = np.nan
-    #     # gets every line labelled as title
-    #     page_metadata.loc[(page_metadata['line_class'] == 'title')
-    #                       & (page_metadata['prev_title'] == 0), 'article_id'] = 'article'
-
-    #     # sets a differt article id to each title line
-    #     article_id = page_metadata[page_metadata['article_id'].notna()]['article_id']
-    #     for i, v in enumerate(article_id.index):
-    #         if i < 9:
-    #             page_metadata.loc[v, 'article_id'] = f"article_0{i + 1}"
-    #         else:
-    #             page_metadata.loc[v, 'article_id'] = f"article_{i + 1}"
-
-    #     # propagates article id to each line until reaching a different article id
-    #     page_metadata['article_id'].fillna(method='ffill', inplace=True)
-
-    #     # removes article_id from header row
-    #     page_metadata.loc[
-    #         page_metadata['line_class'] == 'header', 'article_id'
-    #     ] = 'header'
-
-    #     return page_metadata
-
-    def process(self, ocr_doc: BeautifulSoup):
+    def process(self, ocr_doc: BeautifulSoup) -> pd.DataFrame:
         """
-        Extracts metadata about TextBlock and TextLine tags
-        then applies rules to extract logical structure
+        Extracts metadata about TextBlock and TextLine tags then applies rules to extract logical structure
+
+        :param ocr_doc: ocr tag from XML document in corpus
+        :type ocr_doc: BeautifulSoup
+        :return: Line and Block features dataframe
+        :rtype: pd.DataFrame
         """
         page_metadata = self.get_page_metadata(ocr_doc)
         # page_metadata = self.postprocess_metadata(page_metadata)
@@ -807,11 +885,16 @@ class Processor:
 
         return page_metadata, df_block
 
-    def convert_doc(self, file: str, return_metadata: bool = True) -> dict:
+    def convert_doc(self, filepath: str) -> dict:
         """
         Main interface to convert ALTO XML file into another format
+
+        :param filepath: Filepath to document to convert
+        :type filepath: str
+        :return: Dictionary containing the Line feature dataframe, Block feature dataframe, and converted doc
+        :rtype: dict
         """
-        with open(file, encoding='utf-8') as f:
+        with open(filepath, encoding='utf-8') as f:
             soup = BeautifulSoup(f, 'lxml-xml')
         metadata_tag = soup.find('metadata')
         doctitle = metadata_tag.find('title').contents[0].strip()
@@ -829,8 +912,8 @@ class Processor:
 
             alto = ocr_page.alto
             layout = alto.layout
-            description = alto.description
-            styles = alto.styles
+            # description = alto.description
+            # styles = alto.styles
 
             alto_page = layout.printspace
             if alto_page:

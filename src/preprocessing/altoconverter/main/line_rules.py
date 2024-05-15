@@ -1,11 +1,16 @@
 import pandas as pd
 
 def classify_lines(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Contains sets of rules to categorise TextLine
+
+    :param df: Line feature dataframe
+    :type df: pd.DataFrame
+    :return: Updated line feature dataframe
+    :rtype: pd.DataFrame
+    """
 
     def retrieve_others(df: pd.DataFrame) -> pd.DataFrame:
-        """
-
-        """
 
         def find_others(df: pd.DataFrame) -> pd.DataFrame:
             """
@@ -26,9 +31,7 @@ def classify_lines(df: pd.DataFrame) -> pd.DataFrame:
         return df
 
     def retrieve_headers(df: pd.DataFrame) -> pd.DataFrame:
-        """
 
-        """
         def find_headers(df: pd.DataFrame) -> pd.DataFrame:
             """
 
@@ -240,186 +243,192 @@ def classify_lines(df: pd.DataFrame) -> pd.DataFrame:
         # return pd.merge(df, tables, how='left').fillna(0)
 
 
-    def retrieve_paragraphs(df: pd.DataFrame) -> pd.DataFrame:
-        """Retrieves and postprocess paragraph from Alto document
-        :param df: TextLine Feature DataFrame
-        :type df: pd.DataFrame
-        :return: Updated TextLine Feature DataFrame
-        :rtype: pd.DataFrame
-        """
-        df['is_firstline'] = 0
-        df['firstline_rule'] = 0
-
-        # selects Text blocks
-        df = df[
-            df['block_type'] == 'text'
-        ]
-
-        # Rule 7 to find detect Firstline, based on text indentation
-        line_with_indentation = df[
-            (df['line_hpos'] > df['hpos_median'] + 5)
-            & (df['diff_hpos'] < 105)
-            & (df['stw_capital'] == 1)
-
-            | (df['line_hpos'] > df['hpos_median'] + 5)
-            & (df['diff_hpos'] < 105)
-            & (df['stw_digit'] == 1)
-        ]
-        line_with_indentation['is_firstline'] = 1
-        line_with_indentation['firstline_rule'] = 1
-
-        # ignores already annotated lines
-        subdf = df[~df.isin(line_with_indentation)].dropna()
-
-        # Rule 8 to determine if previous line is the last line of a paragraph
-        df['is_lastline'] = 0
-        df.loc[
-            (df['line_width'] < df['width_median'])
-            & (df['word_count'] < df['count_median'])
-            & (df['line_hpos'] <= df['hpos_median'] + 5),
-            'is_lastline'
-        ] = 1
-        df['prev_lastline'] = df['is_lastline'].shift(1)
-        df = df.fillna(0)
-
-        # Rule 9 to detect beginning of paragraph which are not indented and not preceded by a title
-        prev_last_line = subdf[
-            (subdf['prev_lastline'] == 1)
-            & (subdf['stw_capital'] == 1)
-            & (subdf['line_following_space'] <= subdf['linespace_median'] + 5)
-            ]
-        prev_last_line['is_firstline'] = 1
-        prev_last_line['firstline_rule'] = 2
-
-        subdf = subdf[~subdf.isin(prev_last_line)].dropna()
-
-        other = subdf[
-            # Rule 10 to detect paragraph when Lastline has been missed based on the following linespace
-            (df['prev_lastline'] == 0)
-            & (df['stw_capital'] == 1)
-            & (df['line_previous_space'] == 0)
-            & (df['line_following_space'] <= df['linespace_median'] + 5)
-            | (df['prev_lastline'] == 0)
-            & (df['stw_capital'] == 1)
-            & (df['line_previous_space'] > df['linespace_median'] + 5)
-            & (df['line_following_space'] <= df['linespace_median'] + 5)
-
-            # Rule 11, detects Firstline if starts with a capital letter and is indented
-            | (df['prev_lastline'] == 0)
-            & (df['stw_capital'] == 1)
-            & (df['line_hpos'] > df['hpos_median'] + 5)
-            ]
-
-        other['is_firstline'] = 1
-        other['firstline_rule'] = 3
-
-        paragraphs = pd.concat([line_with_indentation, prev_last_line, other])
-        paragraphs = paragraphs[['is_firstline', 'firstline_rule']]
-        df.update(paragraphs)
-        return df
-
-        paragraphs = find_paragraphs(df)
-        # paragraphs = postprocess(paragraphs)
-
-
     # def retrieve_paragraphs(df: pd.DataFrame) -> pd.DataFrame:
     #     """Retrieves and postprocess paragraph from Alto document
-
     #     :param df: TextLine Feature DataFrame
     #     :type df: pd.DataFrame
     #     :return: Updated TextLine Feature DataFrame
     #     :rtype: pd.DataFrame
     #     """
-
-    #     def find_paragraphs(df: pd.DataFrame) -> pd.DataFrame:
-    #         # selects Text blocks
-    #         df = df[
-    #             df['block_type'] == 'text'
-    #         ]
-
-    #         # Rule 7 to find detect Firstline, based on
-    #         # text indentation
-    #         line_with_indentation = df[
-    #             (df['line_hpos'] > df['hpos_median'] + 5)
-    #             & (df['diff_hpos'] < 105)
-    #             & (df['stw_capital'] == 1)
-
-    #             | (df['line_hpos'] > df['hpos_median'] + 5)
-    #             & (df['diff_hpos'] < 105)
-    #             & (df['stw_digit'] == 1)
-    #         ]
-    #         line_with_indentation['is_firstline'] = 1
-    #         line_with_indentation['firstline_rule'] = 1
-
-    #         # ignores already annotated lines
-    #         subdf = df[~df.isin(line_with_indentation)].dropna()
-
-    #         # Rule 8 to determine if previous line is the
-    #         # last line of a paragraph
-    #         df['is_lastline'] = 0
-    #         df.loc[
-    #             (df['line_width'] < df['width_median'])
-    #             & (df['word_count'] < df['count_median'])
-    #             & (df['line_hpos'] <= df['hpos_median'] + 5),
-    #             'is_lastline'
-    #         ] = 1
-    #         df['prev_lastline'] = df['is_lastline'].shift(1)
-    #         df = df.fillna(0)
-
-
-    #         # Rule 9 to detect beginning of paragraph which
-    #         # are not indented and not preceded by a title
-    #         prev_last_line = subdf[
-    #             (subdf['prev_lastline'] == 1)
-    #             & (subdf['stw_capital'] == 1)
-    #             & (subdf['line_following_space'] <= subdf['linespace_median'] + 5)
-    #             ]
-
-    #         prev_last_line['is_firstline'] = 1
-    #         prev_last_line['firstline_rule'] = 2
-
-    #         subdf = subdf[~subdf.isin(prev_last_line)].dropna()
-
-    #         other = subdf[
-    #             ## Rule 10 to detect paragraph when Lastline has been missed,
-    #             # based on the following linespace
-    #             (df['prev_lastline'] == 0)
-    #             & (df['stw_capital'] == 1)
-    #             & (df['line_previous_space'] == 0)
-    #             & (df['line_following_space'] <= df['linespace_median'] + 5)
-
-    #             | (df['prev_lastline'] == 0)
-    #             & (df['stw_capital'] == 1)
-    #             & (df['line_previous_space'] > df['linespace_median'] + 5)
-    #             & (df['line_following_space'] <= df['linespace_median'] + 5)
-
-    #             # Rule 11, detects Firstline if starts with a capital letter
-    #             # and is indented
-    #             | (df['prev_lastline'] == 0)
-    #             & (df['stw_capital'] == 1)
-    #             & (df['line_hpos'] > df['hpos_median'] + 5)
-    #             ]
-
-    #         other['is_firstline'] = 1
-    #         other['firstline_rule'] = 3
-
-    #         paragraphs = pd.concat([line_with_indentation, prev_last_line, other])
-
-    #         return paragraphs
-
     #     df['is_firstline'] = 0
     #     df['firstline_rule'] = 0
-    #     paragraphs = find_paragraphs(df)
-    #     # paragraphs = postprocess(paragraphs)
+
+    #     # selects Text blocks
+    #     df = df[
+    #         df['block_type'] == 'text'
+    #     ]
+
+    #     # Rule 7 to find detect Firstline, based on text indentation
+    #     line_with_indentation = df[
+    #         (df['line_hpos'] > df['hpos_median'] + 5)
+    #         & (df['diff_hpos'] < 105)
+    #         & (df['stw_capital'] == 1)
+
+    #         | (df['line_hpos'] > df['hpos_median'] + 5)
+    #         & (df['diff_hpos'] < 105)
+    #         & (df['stw_digit'] == 1)
+    #     ]
+    #     line_with_indentation['is_firstline'] = 1
+    #     line_with_indentation['firstline_rule'] = 1
+
+    #     # ignores already annotated lines
+    #     subdf = df[~df.isin(line_with_indentation)].dropna()
+
+    #     # Rule 8 to determine if previous line is the last line of a paragraph
+    #     df['is_lastline'] = 0
+    #     df.loc[
+    #         (df['line_width'] < df['width_median'])
+    #         & (df['word_count'] < df['count_median'])
+    #         & (df['line_hpos'] <= df['hpos_median'] + 5),
+    #         'is_lastline'
+    #     ] = 1
+    #     df['prev_lastline'] = df['is_lastline'].shift(1)
+    #     df = df.fillna(0)
+
+    #     # Rule 9 to detect beginning of paragraph which are not indented and not preceded by a title
+    #     prev_last_line = subdf[
+    #         (subdf['prev_lastline'] == 1)
+    #         & (subdf['stw_capital'] == 1)
+    #         & (subdf['line_following_space'] <= subdf['linespace_median'] + 5)
+    #         ]
+    #     prev_last_line['is_firstline'] = 1
+    #     prev_last_line['firstline_rule'] = 2
+
+    #     subdf = subdf[~subdf.isin(prev_last_line)].dropna()
+
+    #     other = subdf[
+    #         # Rule 10 to detect paragraph when Lastline has been missed based on the following linespace
+    #         (df['prev_lastline'] == 0)
+    #         & (df['stw_capital'] == 1)
+    #         & (df['line_previous_space'] == 0)
+    #         & (df['line_following_space'] <= df['linespace_median'] + 5)
+    #         | (df['prev_lastline'] == 0)
+    #         & (df['stw_capital'] == 1)
+    #         & (df['line_previous_space'] > df['linespace_median'] + 5)
+    #         & (df['line_following_space'] <= df['linespace_median'] + 5)
+
+    #         # Rule 11, detects Firstline if starts with a capital letter and is indented
+    #         | (df['prev_lastline'] == 0)
+    #         & (df['stw_capital'] == 1)
+    #         & (df['line_hpos'] > df['hpos_median'] + 5)
+    #         ]
+
+    #     other['is_firstline'] = 1
+    #     other['firstline_rule'] = 3
+
+    #     paragraphs = pd.concat([line_with_indentation, prev_last_line, other])
     #     paragraphs = paragraphs[['is_firstline', 'firstline_rule']]
     #     df.update(paragraphs)
     #     return df
 
-    def convert_to_labels(doc):
+    #     paragraphs = find_paragraphs(df)
+    #     # paragraphs = postprocess(paragraphs)
+
+
+    def retrieve_paragraphs(df: pd.DataFrame) -> pd.DataFrame:
+        """Retrieves and postprocess paragraph from Alto document
+
+        :param df: TextLine Feature DataFrame
+        :type df: pd.DataFrame
+        :return: Updated TextLine Feature DataFrame
+        :rtype: pd.DataFrame
         """
+
+        def find_paragraphs(df: pd.DataFrame) -> pd.DataFrame:
+            # selects Text blocks
+            df = df[
+                df['block_type'] == 'text'
+            ]
+
+            # Rule 7 to find detect Firstline, based on
+            # text indentation
+            line_with_indentation = df[
+                (df['line_hpos'] > df['hpos_median'] + 5)
+                & (df['diff_hpos'] < 105)
+                & (df['stw_capital'] == 1)
+
+                | (df['line_hpos'] > df['hpos_median'] + 5)
+                & (df['diff_hpos'] < 105)
+                & (df['stw_digit'] == 1)
+            ]
+            line_with_indentation['is_firstline'] = 1
+            line_with_indentation['firstline_rule'] = 1
+
+            # ignores already annotated lines
+            subdf = df[~df.isin(line_with_indentation)].dropna()
+
+            # Rule 8 to determine if previous line is the
+            # last line of a paragraph
+            df['is_lastline'] = 0
+            df.loc[
+                (df['line_width'] < df['width_median'])
+                & (df['word_count'] < df['count_median'])
+                & (df['line_hpos'] <= df['hpos_median'] + 5),
+                'is_lastline'
+            ] = 1
+            df['prev_lastline'] = df['is_lastline'].shift(1)
+            df = df.fillna(0)
+
+
+            # Rule 9 to detect beginning of paragraph which
+            # are not indented and not preceded by a title
+            prev_last_line = subdf[
+                (subdf['prev_lastline'] == 1)
+                & (subdf['stw_capital'] == 1)
+                & (subdf['line_following_space'] <= subdf['linespace_median'] + 5)
+                ]
+
+            prev_last_line['is_firstline'] = 1
+            prev_last_line['firstline_rule'] = 2
+
+            subdf = subdf[~subdf.isin(prev_last_line)].dropna()
+
+            other = subdf[
+                ## Rule 10 to detect paragraph when Lastline has been missed,
+                # based on the following linespace
+                (df['prev_lastline'] == 0)
+                & (df['stw_capital'] == 1)
+                & (df['line_previous_space'] == 0)
+                & (df['line_following_space'] <= df['linespace_median'] + 5)
+
+                | (df['prev_lastline'] == 0)
+                & (df['stw_capital'] == 1)
+                & (df['line_previous_space'] > df['linespace_median'] + 5)
+                & (df['line_following_space'] <= df['linespace_median'] + 5)
+
+                # Rule 11, detects Firstline if starts with a capital letter
+                # and is indented
+                | (df['prev_lastline'] == 0)
+                & (df['stw_capital'] == 1)
+                & (df['line_hpos'] > df['hpos_median'] + 5)
+                ]
+
+            other['is_firstline'] = 1
+            other['firstline_rule'] = 3
+
+            paragraphs = pd.concat([line_with_indentation, prev_last_line, other])
+
+            return paragraphs
+
+        df['is_firstline'] = 0
+        df['firstline_rule'] = 0
+        paragraphs = find_paragraphs(df)
+        # paragraphs = postprocess(paragraphs)
+        paragraphs = paragraphs[['is_firstline', 'firstline_rule']]
+        df.update(paragraphs)
+        return df
+
+    def convert_to_labels(df):
+        """
+        Converts predicted predictions into list of labels
+
+        :param df: Line feature dataframe
+        :type df: pd.DataFrame
+        :return: List of labels for each line
+        :rtype: List[str]
         """
         predicted_label = []
-        for title, subtitle, firstline, header, other in zip(doc['is_title'].values, doc['is_subtitle'].values, doc['is_firstline'].values, doc['is_header'].values, doc['is_other'].values):
+        for title, subtitle, firstline, header, other in zip(df['is_title'].values, df['is_subtitle'].values, df['is_firstline'].values, df['is_header'].values, df['is_other'].values):
 
         # for title, subtitle, firstline, table, header, other in zip(doc['is_title'].values, doc['is_subtitle'].values, doc['is_firstline'].values,doc['is_table'].values, doc['is_header'].values, doc['is_other'].values):
             if title == 1:
@@ -440,9 +449,12 @@ def classify_lines(df: pd.DataFrame) -> pd.DataFrame:
 
     def postprocess(page_metadata: pd.DataFrame) -> pd.DataFrame:
         """
-        Main methods: postprocess successively:
-        * text type
-        * table type
+        Applies sets of rules to post-process predictions (mainly to remove conflincting labels)
+
+        :param page_metadata: Lines feature dataframe
+        :type page_metadata: pd.DataFrame
+        :return: Update line feature dataframe
+        :rtype: pd.DataFrame
         """
 
         def postprocess_tables(page_metadata: pd.DataFrame) -> pd.DataFrame:
@@ -589,71 +601,71 @@ def classify_lines(df: pd.DataFrame) -> pd.DataFrame:
             """
 
 
-            def title_firstline_resolution(df: pd.DataFrame) -> pd.DataFrame:
-                """
-                Solves conflict between Title and Firstline 
-
-                :param df: TextLine Feature DataFrame
-                :type df: pd.DataFrame
-                :return: Updated TextLine Feature DataFrame
-                :rtype: pd.DataFrame
-                """
-                # selects conflicting rows between Title and Firstline
-                conflict = df[
-                    (df['is_title'] == 1)
-                    & (df['is_firstline'] == 1)
-                    ]
-                
-                # Rule 14 to solve conflict between Title and Firstline
-                rule1 = conflict[
-                    (conflict['line_following_space'] < conflict['linespace_median'])
-                    & (conflict['capital_prop'] < 15)
-                    ]
-                rule1['is_firstline'] = 0
-                rest = conflict[~conflict['line_id'].isin(rule1['line_id'])]
-
-                # sets Firstline for all remaining rows
-                rest['is_title'] = 0
-
-                df_titles = pd.concat([rule1, rest])
-                df.update(df_titles)
-                return df
-
-            # def title_firstline_resolution(page_metadata: pd.DataFrame) -> pd.DataFrame:
+            # def title_firstline_resolution(df: pd.DataFrame) -> pd.DataFrame:
             #     """
+            #     Solves conflict between Title and Firstline 
 
+            #     :param df: TextLine Feature DataFrame
+            #     :type df: pd.DataFrame
+            #     :return: Updated TextLine Feature DataFrame
+            #     :rtype: pd.DataFrame
             #     """
             #     # selects conflicting rows between Title and Firstline
-            #     conflict = page_metadata[
-            #         (page_metadata['is_title'] == 1)
-            #         & (page_metadata['is_firstline'] == 1)
+            #     conflict = df[
+            #         (df['is_title'] == 1)
+            #         & (df['is_firstline'] == 1)
             #         ]
                 
-            #     # add identifier to correcting rule
-            #     conflict['post_rule'] = 8
+            #     # Rule 14 to solve conflict between Title and Firstline
             #     rule1 = conflict[
-            #         (conflict['line_following_space'] <= conflict['linespace_median'] + 10)
+            #         (conflict['line_following_space'] < conflict['linespace_median'])
             #         & (conflict['capital_prop'] < 15)
             #         ]
-            #     rule1['is_title'] = 0
-            #     # page_metadata.update(rule1)
+            #     rule1['is_firstline'] = 0
             #     rest = conflict[~conflict['line_id'].isin(rule1['line_id'])]
 
-            #     rule2 = rest[
-            #         (rest['line_previous_space'] > rest['linespace_median'])
-            #         & (rest['line_following_space'] > rest['linespace_median'])
-            #         ]
-            #     rule2['is_firstline'] = 0
+            #     # sets Firstline for all remaining rows
+            #     rest['is_title'] = 0
 
-            #     # page_metadata.update(rule2)
+            #     df_titles = pd.concat([rule1, rest])
+            #     df.update(df_titles)
+            #     return df
 
-            #     rest = rest[~rest['line_id'].isin(rule2['line_id'])]
-            #     rest['is_firstline'] = 0
+            def title_firstline_resolution(page_metadata: pd.DataFrame) -> pd.DataFrame:
+                """
 
-            #     df_titles = pd.concat([rule1, rule2, rest])
-            #     return df_titles
-                # page_metadata.update(rest)
-                # return page_metadata
+                """
+                # selects conflicting rows between Title and Firstline
+                conflict = page_metadata[
+                    (page_metadata['is_title'] == 1)
+                    & (page_metadata['is_firstline'] == 1)
+                    ]
+                
+                # add identifier to correcting rule
+                conflict['post_rule'] = 8
+                rule1 = conflict[
+                    (conflict['line_following_space'] <= conflict['linespace_median'] + 10)
+                    & (conflict['capital_prop'] < 15)
+                    ]
+                rule1['is_title'] = 0
+                # page_metadata.update(rule1)
+                rest = conflict[~conflict['line_id'].isin(rule1['line_id'])]
+
+                rule2 = rest[
+                    (rest['line_previous_space'] > rest['linespace_median'])
+                    & (rest['line_following_space'] > rest['linespace_median'])
+                    ]
+                rule2['is_firstline'] = 0
+
+                # page_metadata.update(rule2)
+
+                rest = rest[~rest['line_id'].isin(rule2['line_id'])]
+                rest['is_firstline'] = 0
+
+                df_titles = pd.concat([rule1, rule2, rest])
+                return df_titles
+                page_metadata.update(rest)
+                return page_metadata
 
             def title_text_resolution(page_metadata: pd.DataFrame) -> pd.DataFrame:
                 """
@@ -697,6 +709,8 @@ def classify_lines(df: pd.DataFrame) -> pd.DataFrame:
 
         return page_metadata
 
+    # applies the rules
+    
     df = retrieve_titles(df)
 
     # STILL THERE BUT NOT ACTUALLY USED TODO: TO REMOVE

@@ -4,18 +4,17 @@ from typing import List
 
 def classify_block(df: pd.DataFrame, df_line: pd.DataFrame) -> pd.DataFrame:
     """
+    Set of rules to classify textblock as either text, titles or other. This may be expanded later to add more classes (advertisement, tables, ...). Theses rules are only applied to block that don't have already a type (table, titre1, advertisement) from the OCR.
 
-    Set of rules to classify textblock as either text, titles or other. This
-    may be expanded later to add more classes (advertisement, tables, ...).
-    Theses rules are only applied to block that don't have already a type (table, titre1, advertisement)
-    from the OCR.
-
+    :param df: Block features dataframe
+    :type df: pd.DataFrame
+    :param df_line: Line features dataframe
+    :type df_line: pd.DataFrame
+    :return: Updated block features dataframe
+    :rtype: pd.DataFrame
     """
 
     def retrieve_text(df: pd.DataFrame) -> pd.DataFrame:
-        """
-
-        """
 
         df['text_rule'] = 0
         df['prev_id'] = df['block_id'].shift(1)
@@ -53,9 +52,7 @@ def classify_block(df: pd.DataFrame, df_line: pd.DataFrame) -> pd.DataFrame:
         return df
 
     def retrieve_title(df: pd.DataFrame) -> pd.DataFrame:
-        """
 
-        """
         df['title_rule'] = 0
         baserule = df[
             df['block_type'] == 'titre1'
@@ -89,111 +86,47 @@ def classify_block(df: pd.DataFrame, df_line: pd.DataFrame) -> pd.DataFrame:
         df.update(titles[['block_title', 'title_rule']])
         return df
 
-    def retrieve_tables(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Rules to identify table blocks
-        """
-        df['table_rule'] = 0
-        baserule = df[
-            df['block_type'] == 'table'
-            ]
-        baserule['block_table'] = 1
-        baserule['table_rule'] = 1
+    # def retrieve_tables(df: pd.DataFrame) -> pd.DataFrame:
+    #     """
+    #     Rules to identify table blocks
+    #     """
+    #     df['table_rule'] = 0
+    #     baserule = df[
+    #         df['block_type'] == 'table'
+    #         ]
+    #     baserule['block_table'] = 1
+    #     baserule['table_rule'] = 1
 
-        df.update(baserule[['block_table', 'table_rule']])
+    #     df.update(baserule[['block_table', 'table_rule']])
 
-        # df['block_table'] = 0
-        # either the block width is smaller than 1/3 of the median block width
-        # or the block starts with the word Total / Totaux
-        tablerule1 = df[
-            (df['block_width'] < df['doc_width'] / 3)
-            | (df['ctn_total_word'] == 1)
+    #     # df['block_table'] = 0
+    #     # either the block width is smaller than 1/3 of the median block width
+    #     # or the block starts with the word Total / Totaux
+    #     tablerule1 = df[
+    #         (df['block_width'] < df['doc_width'] / 3)
+    #         | (df['ctn_total_word'] == 1)
 
-            ]
-        # for the selected block, either they have more than words than the median
-        # or the proportion of digits in them is superior to 30%
-        tablerule2 = tablerule1[
-            (tablerule1['block_word_count'] > tablerule1['doc_words'])
-            | (tablerule1['digits_prop'] >= 30)
-            ]
-        tablerule2['block_table'] = 1
-        tablerule2['table_rule'] = 2
+    #         ]
+    #     # for the selected block, either they have more than words than the median
+    #     # or the proportion of digits in them is superior to 30%
+    #     tablerule2 = tablerule1[
+    #         (tablerule1['block_word_count'] > tablerule1['doc_words'])
+    #         | (tablerule1['digits_prop'] >= 30)
+    #         ]
+    #     tablerule2['block_table'] = 1
+    #     tablerule2['table_rule'] = 2
 
-        df.update(tablerule2[['block_table', 'table_rule']])
+    #     df.update(tablerule2[['block_table', 'table_rule']])
 
-        return df
-
-
-    def retrieve_headers(df: pd.DataFrame, df_line: pd.DataFrame) -> pd.DataFrame:
-        """        
-        Rules to identify Header blocks
-        :param df: TextBlock Feature DataFrame
-        :type df: pd.DataFrame
-        :param df_line: TextLine Feature DataFrame
-        :type df_line: pd.DataFrame
-        :return: Updated TextBlock Feature DataFrame
-        :rtype: pd.DataFrame
-        """
-        # by default, no TextBlock is a Header block
-        df['header_rule'] = 0
-
-        # implementation of rule 4, to detect header block in pages other than the first page of document
-        doc_firstpage_num = df['block_page'].min()
-
-        # gets TextBlock tags from the first page
-        firstpageblock = df[df['block_page'] == doc_firstpage_num]
-
-        # only keeps the first 30 lines of the document
-        filtered_lines = df_line[df_line['block_id'].isin(firstpageblock['block_id'])].dropna()
-        filtered_lines = filtered_lines.iloc[:30]
-        headers_lines = filtered_lines[
-            (filtered_lines['simheader'] >= 90)
-            | (filtered_lines['simtitle'] >= 90)
-            | (filtered_lines['ctn_page'] == 1)
-            | (filtered_lines['ctn_month'] == 1)
-            | (filtered_lines['ctn_currency'] == 1)
-            | (filtered_lines['ctn_address'] == 1)
-            ]
-        # each Block found in headers_lines is marked as Header
-        rule1 = df[df['block_id'].isin(headers_lines['block_id'])].dropna()
-        df.loc[df['block_id'].isin(rule1['block_id']), 'is_header'] = 1
-        df.loc[df['block_id'].isin(rule1['block_id']), 'header_rule'] = 1
-
-        # implementation of rule 5, to detect header block in pages other than the first page of document
-        # gets TextBlock tags after the first page
-        otherpageblock = df[df['block_page'] != doc_firstpage_num]
-        # only keeps the first 4 lines
-        filtered_lines = df_line[df_line['block_id'].isin(otherpageblock['block_id'])].dropna()
-        filtered_lines = filtered_lines.iloc[:4]
-        headers_lines = filtered_lines[
-            (filtered_lines['simheader'] >= 90)
-            | (filtered_lines['simtitle'] >= 90)
-            | (filtered_lines['ctn_page'] == 1)
-            | (filtered_lines['ctn_dash'] == 1)
-            ]
-        # each Block found in headers_lines is marked as Header
-        rule2 = df[df['block_id'].isin(headers_lines['block_id'])].dropna()
-        df.loc[df['block_id'].isin(rule2['block_id']), 'is_header'] = 1
-        df.loc[df['block_id'].isin(rule2['block_id']), 'header_rule'] = 1
-        return df
+    #     return df
 
 
     # def retrieve_headers(df: pd.DataFrame, df_line: pd.DataFrame) -> pd.DataFrame:
-    #     """        
-    #     Rules to identify Header blocks
-    #     :param df: TextBlock Feature DataFrame
-    #     :type df: pd.DataFrame
-    #     :param df_line: TextLine Feature DataFrame
-    #     :type df_line: pd.DataFrame
-    #     :return: Updated TextBlock Feature DataFrame
-    #     :rtype: pd.DataFrame
-    #     """
 
     #     # by default, no TextBlock is a Header block
     #     df['header_rule'] = 0
 
-    #     # implementation of rule 4, to detect header block in pages 
-    #     # other than the first page of document
+    #     # implementation of rule 4, to detect header block in pages other than the first page of document
     #     doc_firstpage_num = df['block_page'].min()
 
     #     # gets TextBlock tags from the first page
@@ -202,8 +135,6 @@ def classify_block(df: pd.DataFrame, df_line: pd.DataFrame) -> pd.DataFrame:
     #     # only keeps the first 30 lines of the document
     #     filtered_lines = df_line[df_line['block_id'].isin(firstpageblock['block_id'])].dropna()
     #     filtered_lines = filtered_lines.iloc[:30]
-
-
     #     headers_lines = filtered_lines[
     #         (filtered_lines['simheader'] >= 90)
     #         | (filtered_lines['simtitle'] >= 90)
@@ -212,36 +143,84 @@ def classify_block(df: pd.DataFrame, df_line: pd.DataFrame) -> pd.DataFrame:
     #         | (filtered_lines['ctn_currency'] == 1)
     #         | (filtered_lines['ctn_address'] == 1)
     #         ]
-
     #     # each Block found in headers_lines is marked as Header
     #     rule1 = df[df['block_id'].isin(headers_lines['block_id'])].dropna()
-    #     df.loc[df['block_id'].isin(rule1['block_id']), 'block_header'] = 1
+    #     df.loc[df['block_id'].isin(rule1['block_id']), 'is_header'] = 1
     #     df.loc[df['block_id'].isin(rule1['block_id']), 'header_rule'] = 1
 
-    #     # implementation of rule 5, to detect header block in pages 
-    #     # other than the first page of document
-
-    #      # gets TextBlock tags after the first page
+    #     # implementation of rule 5, to detect header block in pages other than the first page of document
+    #     # gets TextBlock tags after the first page
     #     otherpageblock = df[df['block_page'] != doc_firstpage_num]
     #     # only keeps the first 4 lines
     #     filtered_lines = df_line[df_line['block_id'].isin(otherpageblock['block_id'])].dropna()
     #     filtered_lines = filtered_lines.iloc[:4]
-
-
     #     headers_lines = filtered_lines[
     #         (filtered_lines['simheader'] >= 90)
     #         | (filtered_lines['simtitle'] >= 90)
     #         | (filtered_lines['ctn_page'] == 1)
     #         | (filtered_lines['ctn_dash'] == 1)
-
     #         ]
-        
     #     # each Block found in headers_lines is marked as Header
     #     rule2 = df[df['block_id'].isin(headers_lines['block_id'])].dropna()
-    #     df.loc[df['block_id'].isin(rule2['block_id']), 'block_header'] = 1
+    #     df.loc[df['block_id'].isin(rule2['block_id']), 'is_header'] = 1
     #     df.loc[df['block_id'].isin(rule2['block_id']), 'header_rule'] = 1
-
     #     return df
+
+
+    def retrieve_headers(df: pd.DataFrame, df_line: pd.DataFrame) -> pd.DataFrame:
+        # by default, no TextBlock is a Header block
+        df['header_rule'] = 0
+
+        # implementation of rule 4, to detect header block in pages 
+        # other than the first page of document
+        doc_firstpage_num = df['block_page'].min()
+
+        # gets TextBlock tags from the first page
+        firstpageblock = df[df['block_page'] == doc_firstpage_num]
+
+        # only keeps the first 30 lines of the document
+        filtered_lines = df_line[df_line['block_id'].isin(firstpageblock['block_id'])].dropna()
+        filtered_lines = filtered_lines.iloc[:30]
+
+
+        headers_lines = filtered_lines[
+            (filtered_lines['simheader'] >= 90)
+            | (filtered_lines['simtitle'] >= 90)
+            | (filtered_lines['ctn_page'] == 1)
+            | (filtered_lines['ctn_month'] == 1)
+            | (filtered_lines['ctn_currency'] == 1)
+            | (filtered_lines['ctn_address'] == 1)
+            ]
+
+        # each Block found in headers_lines is marked as Header
+        rule1 = df[df['block_id'].isin(headers_lines['block_id'])].dropna()
+        df.loc[df['block_id'].isin(rule1['block_id']), 'block_header'] = 1
+        df.loc[df['block_id'].isin(rule1['block_id']), 'header_rule'] = 1
+
+        # implementation of rule 5, to detect header block in pages 
+        # other than the first page of document
+
+         # gets TextBlock tags after the first page
+        otherpageblock = df[df['block_page'] != doc_firstpage_num]
+        # only keeps the first 4 lines
+        filtered_lines = df_line[df_line['block_id'].isin(otherpageblock['block_id'])].dropna()
+        filtered_lines = filtered_lines.iloc[:4]
+
+
+        headers_lines = filtered_lines[
+            (filtered_lines['simheader'] >= 90)
+            | (filtered_lines['simtitle'] >= 90)
+            | (filtered_lines['ctn_page'] == 1)
+            | (filtered_lines['ctn_dash'] == 1)
+
+            ]
+        
+        # each Block found in headers_lines is marked as Header
+        rule2 = df[df['block_id'].isin(headers_lines['block_id'])].dropna()
+        df.loc[df['block_id'].isin(rule2['block_id']), 'block_header'] = 1
+        df.loc[df['block_id'].isin(rule2['block_id']), 'header_rule'] = 1
+
+        return df
 
     def retrieve_others(df: pd.DataFrame, df_line: pd.DataFrame):
         """
@@ -361,9 +340,16 @@ def classify_block(df: pd.DataFrame, df_line: pd.DataFrame) -> pd.DataFrame:
 
         return df
 
-    def postprocess(df: pd.DataFrame, postprocess_others = False) -> pd.DataFrame:
+    def postprocess(df: pd.DataFrame, postprocess_others:bool = False) -> pd.DataFrame:
         """
         Sets of steps to postprocess data, mainly resolve conflict between two predictions
+
+        :param df: Block feature dataframe, after applying the rules
+        :type df: pd.DataFrame
+        :param postprocess_others: Either to post-process blocks labelled as Other, defaults to False
+        :type postprocess_others: bool, optional
+        :return: Postprocessed block feature dataframe
+        :rtype: pd.DataFrame
         """
 
         def text_title_resolution(df: pd.DataFrame) -> pd.DataFrame:
@@ -487,39 +473,6 @@ def classify_block(df: pd.DataFrame, df_line: pd.DataFrame) -> pd.DataFrame:
             df.update(conflict[['block_other', 'block_title', 'block_post_rule']])
             return df
 
-        def header_resolution(df:pd.DataFrame) -> pd.DataFrame:
-            """
-            Solves conflict for header block by setting them to header
-
-            :param df: TextBlock Feature DataFrame
-            :type df: pd.DataFrame
-            :return: Updated TextBlock Feature DataFrame
-            :rtype: pd.DataFrame
-            """
-            # selects all rows marked as headers
-            headers = df[df['is_header'] == 1]
-            # selects conflicting rows
-            conflict = headers[
-                (headers['is_text'] == 1)
-                | (headers['is_title'] == 1)
-                | (headers['is_other'] == 1)
-            ]
-            # implementation of Rule 6, to solve conflict
-            # between Header, Text or Title
-            resolution = conflict[
-                (conflict['block_linecounts'] < 15)
-                & (conflict['block_word_count'] < 50)
-            ]
-            resolution['is_text'] = 0
-            resolution['is_title'] = 0
-            resolution['is_other'] = 0
-            df.update(resolution[[
-                'is_text', 'is_title'
-                ]])
-
-            return df
-
-
         # def header_resolution(df:pd.DataFrame) -> pd.DataFrame:
         #     """
         #     Solves conflict for header block by setting them to header
@@ -530,13 +483,12 @@ def classify_block(df: pd.DataFrame, df_line: pd.DataFrame) -> pd.DataFrame:
         #     :rtype: pd.DataFrame
         #     """
         #     # selects all rows marked as headers
-        #     headers = df[df['block_header'] == 1]
+        #     headers = df[df['is_header'] == 1]
         #     # selects conflicting rows
         #     conflict = headers[
-        #         (headers['block_text'] == 1)
-        #         | (headers['block_title'] == 1)
-        #         # | (headers['block_table'] == 1)
-        #         | (headers['block_other'] == 1)
+        #         (headers['is_text'] == 1)
+        #         | (headers['is_title'] == 1)
+        #         | (headers['is_other'] == 1)
         #     ]
         #     # implementation of Rule 6, to solve conflict
         #     # between Header, Text or Title
@@ -544,14 +496,48 @@ def classify_block(df: pd.DataFrame, df_line: pd.DataFrame) -> pd.DataFrame:
         #         (conflict['block_linecounts'] < 15)
         #         & (conflict['block_word_count'] < 50)
         #     ]
-        #     resolution['block_text'] = 0
-        #     resolution['block_title'] = 0
-        #     # resolution['block_table'] = 0
-        #     resolution['block_other'] = 0
-        #     resolution['block_post_rule'] = -6
-        #     df.update(resolution[['block_text', 'block_title', 'block_table', 'block_other', 'block_post_rule']])
+        #     resolution['is_text'] = 0
+        #     resolution['is_title'] = 0
+        #     resolution['is_other'] = 0
+        #     df.update(resolution[[
+        #         'is_text', 'is_title'
+        #         ]])
 
         #     return df
+
+
+        def header_resolution(df:pd.DataFrame) -> pd.DataFrame:
+            """
+            Solves conflict for header block by setting them to header
+
+            :param df: TextBlock Feature DataFrame
+            :type df: pd.DataFrame
+            :return: Updated TextBlock Feature DataFrame
+            :rtype: pd.DataFrame
+            """
+            # selects all rows marked as headers
+            headers = df[df['block_header'] == 1]
+            # selects conflicting rows
+            conflict = headers[
+                (headers['block_text'] == 1)
+                | (headers['block_title'] == 1)
+                # | (headers['block_table'] == 1)
+                | (headers['block_other'] == 1)
+            ]
+            # implementation of Rule 6, to solve conflict
+            # between Header, Text or Title
+            resolution = conflict[
+                (conflict['block_linecounts'] < 15)
+                & (conflict['block_word_count'] < 50)
+            ]
+            resolution['block_text'] = 0
+            resolution['block_title'] = 0
+            # resolution['block_table'] = 0
+            resolution['block_other'] = 0
+            resolution['block_post_rule'] = -6
+            df.update(resolution[['block_text', 'block_title', 'block_table', 'block_other', 'block_post_rule']])
+
+            return df
 
         if not postprocess_others:
             df = header_resolution(df)
@@ -567,7 +553,12 @@ def classify_block(df: pd.DataFrame, df_line: pd.DataFrame) -> pd.DataFrame:
 
     def convert_to_labels(df: pd.DataFrame) -> List[str]:
         """
+        Converts predicted predictions into list of labels
 
+        :param df: Block feature dataframe
+        :type df: pd.DataFrame
+        :return: List of labels for each block
+        :rtype: List[str]
         """
         predicted_class = []
         for text, title, table, header, other in zip(df['block_text'].values, df['block_title'].values, df['block_table'].values, df['block_header'], df['block_other'].values):
@@ -587,6 +578,8 @@ def classify_block(df: pd.DataFrame, df_line: pd.DataFrame) -> pd.DataFrame:
                 # predicted_class.append('text')
 
         return predicted_class
+
+    # applies the rules 
 
     df['block_text'] = 0
     df['block_title'] = 0
