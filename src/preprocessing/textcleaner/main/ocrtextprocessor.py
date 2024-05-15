@@ -1,16 +1,12 @@
 from typing import List
 import re
-from bs4 import BeautifulSoup, Tag, SoupStrainer
+from bs4 import BeautifulSoup, Tag
 import pandas as pd
 from symspellpy import SymSpell, Verbosity
 # import pkgutil
 import pkg_resources
 from glob import glob
-import os
 import unidecode
-import cchardet
-from itertools import starmap
-import json
 from nltk.util import ngrams
 import pyphen
 
@@ -20,7 +16,13 @@ class OCRTextProcessor:
 
     """
 
-    def __init__(self, lg):
+    def __init__(self, lg:str) -> None:
+        """
+        Constructor
+
+        :param lg: Language code (e.g. fr, en) to process
+        :type lg: str
+        """
 
         self.lg = lg
 
@@ -87,6 +89,11 @@ class OCRTextProcessor:
         Cleans text by:
         * Adding space after stop that is stuck to text
         * Replaces newline by space
+
+        :param text: Text to process
+        :type text: str
+        :return: Processed text
+        :rtype: str
         """
         # print(text)
         text = re.sub(self.re_acronym_sent, r'\1 \2', text)
@@ -95,6 +102,14 @@ class OCRTextProcessor:
         return text
 
     def remove_hyphen(self, text: str) -> str:
+        """
+        Removes hyphen from text
+
+        :param text: Text to process
+        :type text: str
+        :return: Processed text
+        :rtype: str
+        """
         text = re.sub(self.re_hyphen, r'\1\2', text)
         return text
 
@@ -105,6 +120,13 @@ class OCRTextProcessor:
         * postcorrecting ocr
         By default returns a string representation of the file
         but can also return BeautifulSoup format of the file.
+
+        :param file: Path to file to process
+        :type file: str
+        :param return_str: Either returns document as string, defaults to True
+        :type return_str: bool, optional
+        :return: Processed document
+        :rtype: str
         """
 #         only_textblock_tags = SoupStrainer("textblock")
 #         # alto_page = BeautifulSoup(alto_page, 'lxml-xml', parse_only=only_string_tags)
@@ -155,26 +177,16 @@ class OCRTextProcessor:
 #             return processed_alto.prettify()
 #         return processed_alto
 
-    def correct_hyphen(self, file:str, return_str = True, is_file = True) -> None:
+    def correct_hyphen(self, file:str, is_file = True) -> None:
         """
         Delete HYP tag from Alto document
+
+
+        :param file: Either path to file to process, or file as a Tag
+        :type file: str
+        :param is_file: True if file is a filepath, defaults to True
+        :type is_file: bool, optional
         """
-
-#         def preprocess_subscontent(previous_string_tag: Tag) -> bool:
-#             """
-#             Checks if text within subs_content attribute is valid (just text, no integer)
-#             Returns False if it is not valid, True if else
-#             """
-#             re_subscontent = re.compile(r'^[a-zA-Z]+$')
-#             subs_content = previous_string_tag['subs_content']
-#             search_subscontent = re.search(re_subscontent, subs_content)
-#             if search_subscontent:
-
-#                 return True
-#             else:
-#                 return False
-
-        # def correct_textblock(textblock: Tag, next_textblock: Tag) -> None:
 
         def correct_textblock(textblock: Tag) -> None:
             """            
@@ -190,32 +202,6 @@ class OCRTextProcessor:
             if tb_hyp_tag:
 
                 tb_hyp_tag.extract()
-
-                # previous_string_tag = tb_hyp_tag.find_previous('string')
-                # next_string_tag = next_textblock.find('string')
-
-                # if subs_content text is not valid, the attribut is deleted
-                # else, its value is modified as the combination of the text from
-                # both string tags. The next string tag is deleted
-
-                # if previous_string_tag.has_attr('subs_content'):
-                #     print('prev', previous_string_tag)
-                #     subs_content = f"{previous_string_tag['content']}{next_string_tag['content']}"
-                #     previous_string_tag['subs_content'] = subs_content
-
-                #     next_string_tag.extract()
-                    
-#                     extract_next_string = preprocess_subscontent(previous_string_tag)
-#                     if extract_next_string:
-
-#                         # adds subs_content attribute, filled with text from both string tags
-#                         subs_content = f"{previous_string_tag['content']}{next_string_tag['content']}"
-#                         previous_string_tag['subs_content'] = subs_content
-
-#                         next_string_tag.extract()
-#                     else:
-#                         del previous_string_tag['subs_content']
-#                         del next_string_tag['subs_content']
 
         def correct_textline(line: Tag, next_line: Tag) -> None:
             """
@@ -282,8 +268,12 @@ class OCRTextProcessor:
                 
     def extract_word_metadata(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Extracts sets of metadata abouth each word (line)
-        contained in df
+        Extracts sets of metadata abouth each word (line) contained in df
+
+        :param df: Dataframe contianing each word in the XML alto document
+        :type df: pd.DataFrame
+        :return: Updated dataframe with features
+        :rtype: pd.DataFrame
         """
         def get_word_length(word):
             return len(word)
@@ -403,14 +393,14 @@ class OCRTextProcessor:
         
         return df
     
-    def correct_ocr(self, file:str, return_str=True, is_file=True) -> None:
+    def correct_ocr(self, file:str, is_file=True) -> None:
         """
-        Sets of rules to process and correct OCR documents.
-        Each string tag in the XML document is added to a DataFrame,
-        along with metadata (length, case, ...). Each word is asigned
-        an operation (either: keep, delete, substitute). The set of rules
-        determines which operation is to be done on that word. The DF is
-        then processed to apply the operations on the XML file.
+        Sets of rules to process and correct OCR documents. Each string tag in the XML document is added to a DataFrame, along with metadata (length, case, ...). Each word is asigned an operation (either: keep, delete, substitute). The set of rules determines which operation is to be done on that word. The DF is then processed to apply the operations on the XML file.
+
+        :param file: Either path to file to process, or file as a Tag
+        :type file: str
+        :param is_file: True if file is a filepath, defaults to True
+        :type is_file: bool, optional
         """
         
         def remove_nonalpha(df: pd.DataFrame, threshold = 75) -> None:
@@ -555,7 +545,12 @@ class OCRTextProcessor:
 
     def text_readability(self, text: str) -> float:
         """
-        TODO
+        Calculates readability of the text based on amount of existing words in it
+
+        :param text: Text to process
+        :type text: str
+        :return: Readability as a proportion of known words
+        :rtype: float
         """
 
         def clean_text(text):
@@ -574,6 +569,7 @@ class OCRTextProcessor:
                 syll_words = syll_words.split('-')
                 list_syllables.extend(syll_words)
             return list_syllables
+        
         def get_readability_mark(score):
             score = score * 100
             if score in range(0, 20):
