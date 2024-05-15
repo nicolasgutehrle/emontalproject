@@ -3,7 +3,6 @@
 # from parser import get_arks
 
 from .api import Gallica_API
-
 import re
 from multiprocessing.dummy import Pool
 from multiprocessing import cpu_count
@@ -23,7 +22,17 @@ class Gallica_Document:
 
     num_core = cpu_count() - 1
 
-    def __init__(self, ark, data_type='xml', imageres='highres'):
+    def __init__(self, ark:str, data_type:str='xml', imageres:str='highres')-> None:
+        """
+        Constructor
+
+        :param ark: Ark id of the document
+        :type ark: str
+        :param data_type: Format into which the document must be returned, defaults to 'xml'
+        :type data_type: str, optional
+        :param imageres: Resolution of the image, defaults to 'highres'
+        :type imageres: str, optional
+        """
         self.ark = ark
         self.data_type = data_type
         self.imageres = imageres
@@ -43,11 +52,9 @@ class Gallica_Document:
         self.remove_doctypes()
         self.sub_docs = self.get_sub_documents()
 
-    def remove_doctypes(self):
+    def remove_doctypes(self) -> None:
         """
-        Remove any Doctype from retrieved xml / html document
-        in metadata, toc, pagination and ocr
-        :return:
+        Remove any Doctype from retrieved xml / html document in metadata, toc, pagination and ocr
         """
         for tree in (self.oai, self.toc, self.pagination):
             if tree:
@@ -56,23 +63,23 @@ class Gallica_Document:
 
                         item.extract()
 
-    def get_pagination(self):
+    def get_pagination(self) -> Gallica_API:
         """
+        Returns pagination of document
 
-        :return:
+        :return: Pagination of the document
+        :rtype: Gallica_API
         """
         if not self.is_periodical():
             return Gallica_API.pagination(ark=self.ark, data_type=self.data_type)
         else:
             return None
         
-    def send_request(self, url):
-        """
-        Envoie la requete pour recuperer le html.
-        Controle le code retourné.
-        Retourne le contenu de la requete. Sinon, retourne l'erreur.
+    def send_request(self, url:str) -> str:
         """
 
+        Sends the request to retrieve the html. Checks the returned code. Returns the contents of the request. If not, returns an error.        
+        """        
         results = requests.get(url, stream=True)
         results.encoding = 'utf-8'
 
@@ -87,9 +94,11 @@ class Gallica_Document:
             # return None
         
     def get_ocr(self):
+        """
+        Gets the OCR transcription of the document in the XML ALTO format
+        """
         print('Retrieving XML')
         # retrieves each OCR page
-        
         
         ocrlinkstags = self.ocr.find_all('ocrlink')
         ocrlinks = [x.text for x in ocrlinkstags]
@@ -101,7 +110,9 @@ class Gallica_Document:
         ocr_page = self.ocr.find_all('page')
         for old, content in zip(ocr_page, results):
             soup_content = BeautifulSoup(content.decode('utf-8'), features='lxml')
-            old.append(soup_content.alto)        
+            old.append(soup_content.alto)
+
+
     def get_ocr_link(self):
         """
 
@@ -140,8 +151,6 @@ class Gallica_Document:
     def is_ocr(self):
         """
         Checks if OCR is available for this document
-
-        :return:
         """
         nqamoyen = float(self.oai.nqamoyen.text)
         if nqamoyen > 0:
@@ -150,11 +159,7 @@ class Gallica_Document:
 
     def is_periodical(self):
         """
-        Identifies if document is either a periodical or not,
-        by looking at url's end
-
-        :param ark:
-        :return:
+        Identifies if document is either a periodical or not, by looking at url's end
         """
         if self.ark.endswith('/date'):
             return True
@@ -163,12 +168,11 @@ class Gallica_Document:
     def get_sub_documents(self):
         """
         Recursively retrieves sub-document from current document
-        :return:
         """
 
         def get_issues_by_ark(date):
             """
-            Obtient l'ark de chaque numéro pour la date donnée
+            Gets ark id for each issue in the database
             """
 
             date = date.text
@@ -177,6 +181,9 @@ class Gallica_Document:
             return issues_ark
 
         if self.is_periodical():
+            """
+            Checks if document is a periodical
+            """
 
             # ne marche pas si metadata == json: comment faire ?
             # faire conversion en json plus tard ?
@@ -204,8 +211,12 @@ class Gallica_Document:
         else:
             return []
 
-    def prepare_xml(self):
+    def prepare_xml(self) -> BeautifulSoup:
         """
+        Prepares document in the XML format
+
+        :return: XML document processed by BeautifulSoup
+        :rtype: BeautifulSoup
         """
         xmlsoup = BeautifulSoup(features='xml')
         # create initial tag
@@ -245,8 +256,11 @@ class Gallica_Document:
     def convert_to(self, data_format='xml'):
         """
         Converts instance of Document into either XML or JSON
-        :param format:
-        :return:
+
+        :param data_format: Format into which the document is returned, defaults to 'xml'
+        :type data_format: str, optional
+        :return: Either XML or JSON
+        :rtype: _type_
         """
         xmlsoup = self.prepare_xml()
         if data_format == 'json':

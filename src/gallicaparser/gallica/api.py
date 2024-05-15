@@ -8,7 +8,8 @@ import pkg_resources
 
 
 class Gallica_API:
-    # with open('apis_endpoint.json') as f:
+
+    # loads endpoint from disk
     endpoint_path = pkg_resources.resource_filename(__name__,"apis_endpoint.json" )
     with open(endpoint_path) as f:
         dict_apis_endpoint = json.load(f)
@@ -18,12 +19,14 @@ class Gallica_API:
     # num_core = cpu_count() - 1
 
     @classmethod
-    def format_url(cls, endpoint, **kwargs):
+    def format_url(cls, endpoint:str, **kwargs:str)-> str:
         """
+        Formats endpoint with given values
 
-        :param endpoint:
-        :param kwargs:
-        :return:
+        :param endpoint: Endpoint of the API
+        :type endpoint: str
+        :return: Formatted endpoint
+        :rtype: str
         """
 
         # get url corresponding to that endpoint name
@@ -34,17 +37,17 @@ class Gallica_API:
         return formatted_url
 
     @classmethod
-    def send_request(cls, url):
+    def send_request(cls, url:str) -> str:
         """
+        Send request to given URL in Gallica
 
-        :param endpoint:
-        :param args:
-        :return:
+        :param url: url to request
+        :type url: str
+        :return: Content of the response
+        :rtype: str
         """
 
         # send get request to url. Returns the content if valid
-        # print(url)
-        # sleep(.5)
         r = requests.get(url, stream=True)
         if r.status_code == 200:
             return r.content
@@ -53,11 +56,19 @@ class Gallica_API:
             return None
 
     @classmethod
-    def return_content_as(cls, content, url, data_type='xml'):
+    def return_content_as(cls, content:str, url:str, data_type='xml'):
         """
+        Return a content as either XML or JSON
 
-        :param data_type: String. Either xml, json
-        :return:
+        :param content: Content to format
+        :type content: str
+        :param url: Url where the content comes from
+        :type url: str
+        :param data_type: Format in which to return the data, defaults to 'xml'
+        :type data_type: str, optional
+        :raises Exception: Raised if data_type is neither 'xml' or 'json'
+        :return: Either BeautifulSoup or dictionary
+        :rtype: _type_
         """
         if content:
             # parse request content
@@ -78,12 +89,17 @@ class Gallica_API:
             return content
 
     @classmethod
-    def issues(cls, ark, data_type='xml', return_url=False):
+    def issues(cls, ark:str, data_type='xml'):
         """
+        Collect an issue from Gallica by its ark id
 
-        :param ark:
-        :param data_type:
-        :return:
+        :param ark: Ark id of the issue to collect
+        :type ark: str
+        :param data_type: Format in which to return the data, defaults to 'xml'
+        :type data_type: str, optional
+        :raises Exception: Raised if document is not a periodical (does not end with /date)
+        :return: Either BeautifulSoup or dictionary
+        :rtype: _type_
         """
         if ark.endswith('/date'):
             ark = cls.add_bnf_identifier(ark)
@@ -95,7 +111,7 @@ class Gallica_API:
             raise Exception('Document must be a periodical (ark must end with /date)')
 
     @classmethod
-    def issuesdate(cls, ark, date, data_type='xml', return_url=False):
+    def issuesdate(cls, ark, date, data_type='xml'):
         """
 
         :param ark:
@@ -113,13 +129,19 @@ class Gallica_API:
             raise Exception('ark must end with /date')
 
     @classmethod
-    def oairecords(cls, ark, data_type='xml', return_url=False):
+    def oairecords(cls, ark:str, data_type='xml'):
+        """
+        Collects metadata of a document from Gallica
+
+        :param ark: Ark id of the issue to collect
+        :type ark: str
+        :param data_type: Format in which to return the data, defaults to 'xml'
+        :type data_type: str, optional
+        :raises Exception: Raised if document is not a periodical (does not end with /date)
+        :return: Either BeautifulSoup or dictionary
+        :rtype: _type_
         """
 
-        :param ark:
-        :param data_type:
-        :return:
-        """
         ark = cls.add_bnf_identifier(ark)
         formatted_url = cls.format_url('oairecords', ark=ark)
         content = cls.send_request(formatted_url)
@@ -127,12 +149,17 @@ class Gallica_API:
         return data
 
     @classmethod
-    def pagination(cls, ark, data_type='xml', return_url=False):
+    def pagination(cls, ark, data_type='xml'):
         """
+        Gets document's pagination
 
-        :param ark:
-        :param data_type:
-        :return:
+        :param ark: Ark id of the issue to collect
+        :type ark: str
+        :param data_type: Format in which to return the data, defaults to 'xml'
+        :type data_type: str, optional
+        :raises Exception: Raised if document is not a periodical (does not end with /date)
+        :return: Either BeautifulSoup or dictionary
+        :rtype: _type_
         """
         # ark = cls.add_bnf_identifier(ark)
         formatted_url = cls.format_url('pagination', ark=ark)
@@ -141,13 +168,17 @@ class Gallica_API:
         return data
 
     @classmethod
-    def simpleimage(cls, ark, res):
+    def simpleimage(cls, ark:str, res:str) -> str:
         """
+        Gets URL of scan of documents with the given ark id, in the resolution specified by res argument
 
-        :param ark:
-        :param res:
-        :param data_type:
-        :return:
+        :param ark: Ark id of the document
+        :type ark: str
+        :param res: Resolution to get the document
+        :type res: str
+        :raises Exception: Raised if correct value for the resolution is not given
+        :return: Url of the scanned document
+        :rtype: str
         """
         if res in cls.page_res:
             if not ark.endswith('/date'):
@@ -163,14 +194,20 @@ class Gallica_API:
             raise Exception(f'res argument must be one of the following value : {cls.page_res}')
 
     @classmethod
-    def contentsearch(cls, ark, query, data_type='xml', return_url=False):
+    def contentsearch(cls, ark:str, query:str, data_type='xml'):
+        """
+        Returns list of occurrences within a document with given ark id
+
+        :param ark: Ark id
+        :type ark: str
+        :param query: Term to search for
+        :type query: str
+        :param data_type: Format in which to return the data, defaults to 'xml'
+        :type data_type: str, optional
+        :return: Occurrences of the terms in the document
+        :rtype: _type_
         """
 
-        :param ark:
-        :param query:
-        :param data_type:
-        :return:
-        """
         # ark = cls.add_bnf_identifier(ark)
         formatted_url = cls.format_url('contentsearch', ark=ark, query=query)
         content = cls.send_request(formatted_url)
@@ -178,14 +215,20 @@ class Gallica_API:
         return data
 
     @classmethod
-    def contentpage(cls, ark, query, page,data_type='xml', return_url=False):
+    def contentpage(cls, ark:str, query:str, page:int,data_type='xml'):
         """
+        Returns list of occurrences within a document with given ark id in given page
 
-        :param ark:
-        :param query:
-        :param page:
-        :param data_type:
-        :return:
+        :param ark: Ark id
+        :type ark: str
+        :param query: Term to search for
+        :type query: str
+        :param page: Page where to search for
+        :type page: int
+        :param data_type: Format in which to return the data, defaults to 'xml'
+        :type data_type: str, optional
+        :return: Occurrences of the terms in the document
+        :rtype: _type_
         """
         ark = cls.add_bnf_identifier(ark)
         formatted_url = cls.format_url('contentpage', ark=ark, query=query, page=page)
@@ -194,12 +237,16 @@ class Gallica_API:
         return data
 
     @classmethod
-    def toc(cls, ark, data_type='xml', return_url=False):
+    def toc(cls, ark:str, data_type='xml'):
         """
+        Gets the table of content of the document
 
-        :param ark:
-        :param data_type:
-        :return:
+        :param ark: Ark id
+        :type ark: str
+        :param data_type: Format in which to return the data, defaults to 'xml'
+        :type data_type: str, optional
+        :return: Table of content of the document
+        :rtype: _type_
         """
         ark = cls.add_bnf_identifier(ark)
         formatted_url = cls.format_url('toc', ark=ark)
@@ -208,12 +255,16 @@ class Gallica_API:
         return data
 
     @classmethod
-    def texteBrut(cls, ark, data_type='xml', return_url=False):
+    def texteBrut(cls, ark:str, data_type='xml'):
         """
+        Gets textual content of document with given ark id, without XML formatting
 
-        :param ark:
-        :param data_type:
-        :return:
+        :param ark: Ark id
+        :type ark: str
+        :param data_type: Format in which to return the data, defaults to 'xml'
+        :type data_type: str, optional
+        :return: Textual content of document
+        :rtype: _type_
         """
         ark = cls.add_bnf_identifier(ark)
         formatted_url = cls.format_url('texteBrut', ark=ark)
@@ -222,13 +273,18 @@ class Gallica_API:
         return data
 
     @classmethod
-    def ocr(cls, ark, page, data_type='xml', return_url=False):
+    def ocr(cls, ark:str, page:int, data_type='xml'):
         """
+        Returns textual content of document in XML ALTO format for given page
 
-        :param ark:
-        :param page:
-        :param data_type:
-        :return:`
+        :param ark: Ark id
+        :type ark: str
+        :param page: Page to collect the transcription
+        :type page: int
+        :param data_type: Format in which to return the data, defaults to 'xml'
+        :type data_type: str, optional
+        :return: Textual content of document
+        :rtype: _type_
         """
         # ark = cls.add_bnf_identifier(ark)
         formatted_url = cls.format_url('ocr', ark=ark, page=page)
@@ -237,17 +293,26 @@ class Gallica_API:
         return data
 
     @classmethod
-    def iiif(cls, ark, region, size, rotation, quality, format, data_type='xml', return_url=False):
+    def iiif(cls, ark:str, region:str, size:str, rotation:str, quality:str, format:str, data_type='xml'):
         """
+        TODO : Collects scan image of document
 
-        :param ark:
-        :param region:
-        :param size:
-        :param rotation:
-        :param quality:
-        :param format:
-        :param data_type:
-        :return:
+        :param ark: _description_
+        :type ark: str
+        :param region: _description_
+        :type region: str
+        :param size: _description_
+        :type size: str
+        :param rotation: _description_
+        :type rotation: str
+        :param quality: _description_
+        :type quality: str
+        :param format: _description_
+        :type format: str
+        :param data_type: _description_, defaults to 'xml'
+        :type data_type: str, optional
+        :return: _description_
+        :rtype: _type_
         """
         ark = cls.add_bnf_identifier(ark)
         formatted_url = cls.format_url('iiif', ark=ark, region=region,
@@ -258,12 +323,16 @@ class Gallica_API:
         return data
 
     @classmethod
-    def iiifmetadata(cls, ark, data_type='xml', return_url=False):
+    def iiifmetadata(cls, ark:str, data_type='xml'):
         """
+        TODO : collects image metadata
 
-        :param ark:
-        :param data_type:
-        :return:
+        :param ark: _description_
+        :type ark: str
+        :param data_type: _description_, defaults to 'xml'
+        :type data_type: str, optional
+        :return: _description_
+        :rtype: _type_
         """
         ark = cls.add_bnf_identifier(ark)
         formatted_url = cls.format_url('iiifmetadata', ark=ark)
@@ -272,7 +341,7 @@ class Gallica_API:
         return data
 
     @classmethod
-    def search(cls, *args, data_type='xml', return_url=False):
+    def search(cls, *args, data_type='xml'):
         """
 
         :param args:

@@ -1,4 +1,4 @@
-from main.gallica.gallica_interface import GallicaInterface
+from gallica.gallica_interface import GallicaInterface
 import argparse
 
 if __name__ == "__main__":

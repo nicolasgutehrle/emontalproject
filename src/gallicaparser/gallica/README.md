@@ -1,1 +1,0 @@
-# EMONTAL project

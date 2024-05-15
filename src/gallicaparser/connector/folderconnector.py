@@ -5,10 +5,19 @@ import os
 import shutil
 from glob import glob
 from .statfile.statfile import StatFile
+from typing import Set 
 
 class FolderConnector(Connector):
 
-    def __init__(self, database_name, new_db=False):
+    def __init__(self, database_name:str, new_db:bool=False) -> None:
+        """
+        Constructor
+
+        :param database_name: Name of the folder where to store the documents
+        :type database_name: str
+        :param new_db: Whether to create a new folder or not, defaults to False
+        :type new_db: bool, optional
+        """
         super(FolderConnector, self).__init__(database_name, new_db)
         # self.session = self.init_session()
         self.folder_path = self.connect_to(database_name)
@@ -16,19 +25,25 @@ class FolderConnector(Connector):
 
         self.stat_file = self.init_stat_file()
 
-    def init_session(self):
+    def init_session(self) -> str:
         """
+        Build the folder where the data are saved if it does not exist yet, and returns the name of the folder
 
-        :return:
+        :return: Name of the folder, i.e. 'databases'
+        :rtype: str
         """
         if not os.path.exists('databases'):
             os.mkdir('databases')
         return 'databases'
 
-    def connect_to(self, database_name):
+    def connect_to(self, database_name:str) -> str:
         """
+        Creates folder where the data are stored, if necessary
 
-        :return:
+        :param database_name: Name of the folder
+        :type database_name: str
+        :return: Path to the folder
+        :rtype: str
         """
         # folder_path = f"{self.session}/{self.database_name}"
         folder_path = database_name
@@ -42,10 +57,12 @@ class FolderConnector(Connector):
             os.mkdir(folder_path)
         return folder_path
 
-    def init_stat_file(self):
+    def init_stat_file(self) -> StatFile:
         """
         Either creates or load stat file about current database
-        :return:
+
+        :return: StatFile describing the database
+        :rtype: StatFile
         """
         if os.path.exists(self.stat_file_path):
             print('Loading stat_file')
@@ -58,39 +75,46 @@ class FolderConnector(Connector):
             print('Stat_file created')
         return stat_file
 
-    def get_data_files(self):
+    def get_data_files(self) -> Set(str):
         """
+        Gets list of file names in the database
 
-        :return:
+        :return: Set of filenames
+        :rtype: set
         """
         list_files = [file['id'] for file in self.stat_file.get_collection()]
         return set(list_files)
 
-    def save(self, docname, doc):
+    def save(self, docname:str, doc:str) -> None:
         """
+        Save document to disk
 
-        :param docname:
-        :param doc:
-        :return:
+        :param docname: Filename to save, with extension
+        :type docname: str
+        :param doc: File to save
+        :type doc: str
         """
         with open(f"{self.folder_path}/{docname}", 'w', encoding='utf-8') as f:
             f.write(doc)
 
-    def make_dir(self, dirname):
+    def make_dir(self, dirname:str) -> None:
         """
+        Builds folder in the database
 
-        :param dirname:
-        :return:
+        :param dirname: Folder name
+        :type dirname: str
         """
         if not os.path.exists(f"{self.folder_path}/{dirname}"):
             os.mkdir(f"{self.folder_path}/{dirname}")
 
-    def open(self, docname):
+    def open(self, docname:str) -> BeautifulSoup:
         """
+        Open file in database as an XML file
 
-        :param docname:
-        :param doc:
-        :return:
+        :param docname: Filename to open
+        :type docname: str
+        :return: File processed by BeautifulSoup
+        :rtype: BeautifulSoup
         """
         with open(f"{self.folder_path}/{docname}", 'r', encoding='utf-8') as f:
             return BeautifulSoup(f, 'lxml-xml')
